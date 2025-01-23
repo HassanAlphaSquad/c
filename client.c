@@ -5,45 +5,44 @@
 #include <string.h>     //memset
 #include <stdlib.h>     //sizeof
 #include <netinet/in.h> //INADDR_ANY
-
+#include <arpa/inet.h>  // For inet_addr and other network functions
 
 #define PORT 8000
 #define SERVER_IP "127.0.0.1"
-#define MAXSZ 100
+#define MAX_MESSAGE_LENGTH 2000
+
 int main()
 {
-    int sockfd; // to create socket
+    int sock;
 
     struct sockaddr_in serverAddress; // client will connect on this
 
     int n;
-    char msg1[MAXSZ];
-    char msg2[MAXSZ];
+    char message1[MAX_MESSAGE_LENGTH];
+    char message2[MAX_MESSAGE_LENGTH];
 
-    // create socket
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    sock = socket(AF_INET, SOCK_STREAM, 0); // create socket
+
     // initialize the socket addresses
     memset(&serverAddress, 0, sizeof(serverAddress));
     serverAddress.sin_family = AF_INET;
     serverAddress.sin_addr.s_addr = inet_addr(SERVER_IP);
     serverAddress.sin_port = htons(PORT);
 
-    // client  connect to server on port
-    connect(sockfd, (struct sockaddr *)&serverAddress, sizeof(serverAddress));
-    // send to sever and receive from server
+    connect(sock, (struct sockaddr *)&serverAddress, sizeof(serverAddress)); // client's connection to server
+
+    // send to sever and receive back message from server
+
     while (1)
     {
         printf("\nEnter message to send to server:\n");
-        fgets(msg1, MAXSZ, stdin);
-        if (msg1[0] == '#')
-            break;
+        fgets(message1, MAX_MESSAGE_LENGTH, stdin);
 
-        n = strlen(msg1) + 1;
-        send(sockfd, msg1, n, 0);
+        n = strlen(message1) + 1;
+        send(sock, message1, n, 0);
+        n = recv(sock, message2, MAX_MESSAGE_LENGTH, 0);
 
-        n = recv(sockfd, msg2, MAXSZ, 0);
-
-        printf("Receive message from  server::%s\n", msg2);
+        printf("Server is replying: %s\n", message2);
     }
 
     return 0;
