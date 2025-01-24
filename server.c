@@ -120,27 +120,52 @@ int main()
                 {
                     if (search_file(path))
                     {
-                        FILE *file = fopen(path, "r");
+                        FILE *file = fopen(path, "rb"); // Open file in binary mode to handle both text and image files
                         if (file == NULL)
                         {
                             perror("Error opening file");
                         }
                         else
                         {
-                            // Send HTTP response headers with Content-Type set to text/html
-                            const char *header = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
-                            send(acceptingSocket, header, strlen(header), 0);
+                            // Get the file extension
+                            const char *extension = strrchr(path, '.'); // Find the last dot in the file name
 
-                            // Read the file and send its content to the browser
-                            char buffer[1024];
-                            while (fgets(buffer, sizeof(buffer), file))
+                            const char *header;
+
+                            if (extension != NULL)
                             {
-                                send(acceptingSocket, buffer, strlen(buffer), 0);
+                                if (strcmp(extension, ".html") == 0)
+                                {
+                                    // Send HTTP response header for HTML files
+                                    header = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
+                                }
+                                else if (strcmp(extension, ".png") == 0)
+                                {
+                                    // Send HTTP response header for PNG files
+                                    header = "HTTP/1.1 200 OK\r\nContent-Type: image/png\r\n\r\n";
+                                }
+                                else
+                                {
+                                    // Send Unsupported Media Type header if the file type is unsupported
+                                    header = "HTTP/1.1 415 Unsupported Media Type\r\n\r\n";
+                                }
+
+                                // Send the HTTP response header
+                                send(acceptingSocket, header, strlen(header), 0);
+
+                                // Read the file and send its content to the browser
+                                char buffer[1024];
+                                size_t bytes;
+                                while ((bytes = fread(buffer, 1, sizeof(buffer), file)) > 0)
+                                {
+                                    send(acceptingSocket, buffer, bytes, 0);
+                                }
                             }
 
                             fclose(file);
                         }
                     }
+
                     else
                     {
                         // If file not found, send 404 error page in HTML format
