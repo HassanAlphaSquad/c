@@ -1,20 +1,21 @@
 #include <stdio.h>
-#include <unistd.h>     // For close
-#include <sys/types.h>  // For socket
-#include <sys/socket.h> // For socket
-#include <string.h>     // For memset
-#include <stdlib.h>     // For sizeof
-#include <netinet/in.h> // For INADDR_ANY
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <string.h>
+#include <stdlib.h>
+#include <netinet/in.h>
 #include <dirent.h>
 #include <sys/stat.h>
 
 #define MAX_MESSAGE_LENGTH 1024
 #define PORT 8000
 
+// Function to search for a file in the current directory
 int search_file(const char *filename)
 {
     struct dirent *entry;
-    DIR *dp = opendir("."); // Open the current directory
+    DIR *dp = opendir(".");
 
     if (dp == NULL)
     {
@@ -28,7 +29,7 @@ int search_file(const char *filename)
         if (strcmp(entry->d_name, filename) == 0)
         {
             found = 1; // File found
-            break;     // Exit the loop as the file is found
+            break;
         }
     }
 
@@ -44,70 +45,85 @@ int search_file(const char *filename)
 
 int main()
 {
-    int sock;
-    int acceptingSocket;
-    struct sockaddr_in serverAddress;
-    struct sockaddr_in clientAddress;
-    int n;
+    int server_socket, client_socket;
+    struct sockaddr_in server_address, client_address;
     char message[MAX_MESSAGE_LENGTH];
-    int clientAddressLength;
+    socklen_t client_address_length;
 
-    sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock < 0)
+    // Create socket
+    server_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_socket < 0)
     {
         perror("Error opening socket");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
-    memset(&serverAddress, 0, sizeof(serverAddress));
-    serverAddress.sin_family = AF_INET;
-    serverAddress.sin_addr.s_addr = htonl(INADDR_ANY);
-    serverAddress.sin_port = htons(PORT);
+    // Configure server address
+    memset(&server_address, 0, sizeof(server_address));
+    server_address.sin_family = AF_INET;
+    server_address.sin_addr.s_addr = htonl(INADDR_ANY);
+    server_address.sin_port = htons(PORT);
 
-    if (bind(sock, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) < 0)
+    // Bind socket
+    if (bind(server_socket, (struct sockaddr *)&server_address, sizeof(server_address)) < 0)
     {
         perror("Error binding socket");
-        exit(1);
+        close(server_socket);
+        exit(EXIT_FAILURE);
     }
 
-    listen(sock, 5);
+    // Listen for incoming connections
+    if (listen(server_socket, 5) < 0)
+    {
+        perror("Error listening on socket");
+        close(server_socket);
+        exit(EXIT_FAILURE);
+    }
+
     printf("Server listening on port %d...\n", PORT);
 
     while (1)
     {
         printf("***** Waiting for new client connection *****\n");
-        clientAddressLength = sizeof(clientAddress);
-        acceptingSocket = accept(sock, (struct sockaddr *)&clientAddress, &clientAddressLength);
-        if (acceptingSocket < 0)
+
+        // Accept a new client connection
+        client_address_length = sizeof(client_address);
+        client_socket = accept(server_socket, (struct sockaddr *)&client_address, &client_address_length);
+        if (client_socket < 0)
         {
             perror("Error accepting connection");
             continue;
         }
 
+        // Fork a new process to handle the client
         pid_t pid = fork();
         if (pid < 0)
         {
             perror("Error forking");
-            close(acceptingSocket);
+            close(client_socket);
             continue;
         }
 
         if (pid == 0)
-        {                // Child process
-            close(sock); // Child doesn't need the listening socket
+        {                         // Child process
+            close(server_socket); // Child doesn't need the listening socket
 
-            n = recv(acceptingSocket, message, MAX_MESSAGE_LENGTH, 0);
+            // Receive data from the client
+            ssize_t n = recv(client_socket, message, MAX_MESSAGE_LENGTH, 0);
             if (n < 0)
             {
                 perror("Error receiving data");
-                close(acceptingSocket);
-                exit(1);
+                close(client_socket);
+                exit(EXIT_FAILURE);
             }
 
+            message[n] = '\0'; // Null terminate the received message
+
+            // Parse the HTTP request
             char method[10], path[80], protocol[10], version[10];
             sscanf(message, "%s /%s %[^/]/%s", method, path, protocol, version);
-            printf("\n");
 
+            // Handle GET request
             if (strncmp(method, "GET", 3) == 0)
             {
                 if (search_file(path))
@@ -121,6 +137,8 @@ int main()
                     {
                         const char *header;
                         const char *extension = strrchr(path, '.');
+
+                        // Determine content type
                         if (extension != NULL)
                         {
                             if (strcmp(extension, ".html") == 0)
@@ -135,46 +153,46 @@ int main()
                             {
                                 header = "HTTP/1.1 200 OK\r\nContent-Type: text/css\r\n\r\n";
                             }
-                             else if (strcmp(extension, ".js") == 0)
-                            {
-                                header = "HTTP/1.1 200 OK\r\nContent-Type: application/x-javascript\r\n\r\n";
-                            }
                             else
                             {
                                 header = "HTTP/1.1 415 Unsupported Media Type\r\n\r\n";
                             }
-                            send(acceptingSocket, header, strlen(header), 0);
 
+                            send(client_socket, header, strlen(header), 0);
+
+                            // Send file content
                             char buffer[1024];
                             size_t bytes;
                             while ((bytes = fread(buffer, 1, sizeof(buffer), file)) > 0)
                             {
-                                send(acceptingSocket, buffer, bytes, 0);
+                                send(client_socket, buffer, bytes, 0);
                             }
                         }
+
                         fclose(file);
                     }
                 }
                 else
                 {
-                    const char *errorResponse = "HTTP/1.1 404 Not Found\r\nContent-Type: text/html\r\n\r\n"
-                                                "<html><body><h1>404 Not Found</h1><p>The requested file was not found.</p></body></html>";
-                    send(acceptingSocket, errorResponse, strlen(errorResponse), 0);
+                    // Send 404 Not Found response
+                    const char *error_response =
+                        "HTTP/1.1 404 Not Found\r\nContent-Type: text/html\r\n\r\n"
+                        "<html><body><h1>404 Not Found</h1><p>The requested file was not found.</p></body></html>";
+                    send(client_socket, error_response, strlen(error_response), 0);
                 }
             }
 
-            message[n] = '\0'; // Null terminate the message
-            send(acceptingSocket, message, n, 0);
+            printf("Received and processed request: %s\n", message);
 
-            printf("Received and sent back: %s\n", message);
-            close(acceptingSocket);
-            exit(0); // Exit the child process after handling the client
+            close(client_socket);
+            exit(EXIT_SUCCESS); // Exit child process
         }
         else
-        {                           // Parent process
-            close(acceptingSocket); // Parent doesn't need the accepted socket
+        {                         // Parent process
+            close(client_socket); // Parent doesn't need the accepted socket
         }
     }
 
-    close(sock); // Close the listening socket (never reached in this case)
+    close(server_socket); // Close the listening socket (never reached)
+    return 0;
 }
