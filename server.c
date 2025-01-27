@@ -215,23 +215,33 @@ int main()
                         html_response[bytesRead] = '\0'; // Null-terminate the string
                         fclose(file);                    // Close the file after reading
 
+                        // Array of extensions you want to support
+                        const char *extensions[] = {".html", ".txt", ".css", ".png"};
+                        size_t num_extensions = sizeof(extensions) / sizeof(extensions[0]);
+
                         // Look for the placeholder where the links should be inserted
-                        char *placeholder = strstr(html_response, "<!-- LINKS_PLACEHOLDER -->"); // <!-- LINKS_PLACEHOLDER --> will be searched in html_response  #strstr searches for 2nd string in 1st string
+                        char *placeholder = strstr(html_response, "<!-- LINKS_PLACEHOLDER -->"); // <!-- LINKS_PLACEHOLDER --> will be searched in html_response
                         if (placeholder != NULL)
                         {
-                            // Generate the links dynamically
+                            // Generate the links dynamically based on the file types
                             char links_section[1024] = "<ul class='links'>";
 
                             struct dirent *entry;
                             while ((entry = readdir(dir)) != NULL)
                             {
-                                // Filter for only .html files and exclude default.html
-                                if (strstr(entry->d_name, ".html") != NULL && strcmp(entry->d_name, "default.html") != 0)
+                                // Loop through all the supported extensions
+                                for (size_t i = 0; i < num_extensions; ++i)
                                 {
-                                    snprintf(links_section + strlen(links_section), sizeof(links_section) - strlen(links_section),
-                                             "<li><a href='%s' target='_blank'>%s</a></li>", entry->d_name, entry->d_name);
+                                    // Check if the file matches the current extension and exclude default.html
+                                    if (strstr(entry->d_name, extensions[i]) != NULL && strcmp(entry->d_name, "default.html") != 0)
+                                    {
+                                        snprintf(links_section + strlen(links_section), sizeof(links_section) - strlen(links_section),
+                                                 "<li><a href='%s' target='_blank'>%s</a></li>", entry->d_name, entry->d_name);
+                                        break; // Exit loop once matching extension is found
+                                    }
                                 }
                             }
+
                             strcat(links_section, "</ul>");
 
                             // Replace the placeholder with the dynamically generated links
@@ -244,7 +254,6 @@ int main()
 
                         // Send the response header
                         const char *header = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
-                        // header = RESPONSE_HEADERS[get_extension(extension)];
                         send(acceptingSocket, header, strlen(header), 0);
 
                         // Send the dynamically modified HTML content
