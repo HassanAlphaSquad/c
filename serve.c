@@ -66,7 +66,7 @@ const char *EXTENTSIONS[COUNT] = {
     ".css",
     ".js",
     ".png"};
- 
+
 Extension get_extension(const char *src)
 {
     Extension e = 1;

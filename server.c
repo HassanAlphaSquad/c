@@ -175,8 +175,8 @@ int main()
                         html_response[bytesRead] = '\0'; // Null-terminate the string
                         fclose(file);                    // Close the file after reading
 
-                        // Array of extensions you want to support
-                        const char *extensions[] = {".html", ".txt", ".css", ".png"};
+                        // Array of extensions you want to support (without dots)
+                        const char *extensions[] = {"html", "txt", "css", "png", "py", "php"};
                         size_t num_extensions = sizeof(extensions) / sizeof(extensions[0]);
 
                         // Look for the placeholder where the links should be inserted
@@ -184,7 +184,10 @@ int main()
                         if (placeholder != NULL)
                         {
                             // Generate the links dynamically based on the file types
-                            char links_section[1024] = "<ul class='links'>";
+                            char links_section[1024] = "<div class='file-types'>";
+
+                            // Create a structure to hold categorized files
+                            char categorized_files[256][256] = {0};
 
                             struct dirent *entry; // this structure is used for directory listing/exploring
                             while ((entry = readdir(dir)) != NULL)
@@ -193,16 +196,32 @@ int main()
                                 for (size_t i = 0; i < num_extensions; ++i)
                                 {
                                     // Check if the file matches the current extension and exclude default.html
-                                    if (strstr(entry->d_name, extensions[i]) != NULL && strcmp(entry->d_name, "default.html") != 0) // strcmp-compares two strings
+                                    const char *ext = strrchr(entry->d_name, '.'); // Find the last dot in the filename
+                                    if (ext != NULL)
                                     {
-                                        snprintf(links_section + strlen(links_section), sizeof(links_section) - strlen(links_section),
-                                                 "<li><a href='%s' target='_blank'>%s</a></li>", entry->d_name, entry->d_name);
-                                        break; // Exit loop once matching extension is found
+                                        ext++;                                                                             // Skip the dot
+                                        if (strcmp(ext, extensions[i]) == 0 && strcmp(entry->d_name, "default.html") != 0) // strcmp-compares strings
+                                        {
+                                            // Add the file to the appropriate category
+                                            snprintf(categorized_files[i] + strlen(categorized_files[i]), sizeof(categorized_files[i]) - strlen(categorized_files[i]),
+                                                     "<li> <a href='%s' target='_blank'>%s</a></li>", entry->d_name, entry->d_name);
+                                            break; // Exit loop once matching extension is found
+                                        }
                                     }
                                 }
                             }
 
-                            strcat(links_section, "</ul>");
+                            // Add the categorized files to the HTML
+                            for (size_t i = 0; i < num_extensions; ++i)
+                            {
+                                if (strlen(categorized_files[i]) > 0)
+                                {
+                                    snprintf(links_section + strlen(links_section), sizeof(links_section) - strlen(links_section),
+                                             "<div class='file-category'><br><strong>%s:</strong><br>%s</div>", extensions[i], categorized_files[i]);
+                                }
+                            }
+
+                            strcat(links_section, "</div>");
 
                             // Replace the placeholder with the dynamically generated links
                             char buffer[4096];
@@ -221,6 +240,74 @@ int main()
                     }
                 }
             }
+
+            else if (strstr(path, ".php")) // Handle PHP CGI script
+            {
+                // Construct the command to execute the PHP script
+                char command[256];
+                snprintf(command, sizeof(command), "php -d display_errors=1 -d error_reporting=E_ALL %s", path + 1);
+
+                // Execute the script using popen and capture the output
+                FILE *fp = popen(command, "r"); // popen- opens the pipe for process (pipe is a unidirectional way of communication)
+                if (fp == NULL)
+                {
+                    perror("Error executing CGI script");
+                    const char *errorResponse = "HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/html\r\n\r\n"
+                                                "<html><body><h1>500 Internal Server Error</h1><p>Could not execute script.</p></body></html>";
+                    send(acceptingSocket, errorResponse, strlen(errorResponse), 0);
+                }
+                else
+                {
+                    const char *header = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
+                    send(acceptingSocket, header, strlen(header), 0);
+
+                    char buffer[1024];
+                    size_t bytes;
+                    while ((bytes = fread(buffer, 1, sizeof(buffer), fp)) > 0)
+                    {
+                        send(acceptingSocket, buffer, bytes, 0);
+                    }
+                    pclose(fp); // Close the process
+                }
+            }
+
+            //            else if (strstr(path, ".py") || strstr(path, ".php")) // Handle CGI scripts
+            // {
+            //     // Construct the command to execute the script
+            //     char command[256];
+            //     if (strstr(path, ".py"))
+            //     {
+            //         snprintf(command, sizeof(command), "python3 %s", path + 1);
+            //     }
+            //     else if (strstr(path, ".php"))
+            //     {
+            //         // Add flags to PHP command to ensure error reporting
+            //         snprintf(command, sizeof(command), "php -d display_errors=1 -d error_reporting=E_ALL %s", path + 1);
+            //     }
+
+            //     // Execute the script using popen and capture the output
+            //     FILE *fp = popen(command, "r");
+            //     if (fp == NULL)
+            //     {
+            //         perror("Error executing CGI script");
+            //         const char *errorResponse = "HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/html\r\n\r\n"
+            //                                     "<html><body><h1>500 Internal Server Error</h1><p>Could not execute script.</p></body></html>";
+            //         send(acceptingSocket, errorResponse, strlen(errorResponse), 0);
+            //     }
+            //     else
+            //     {
+            //         const char *header = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
+            //         send(acceptingSocket, header, strlen(header), 0);
+
+            //         char buffer[1024];
+            //         size_t bytes;
+            //         while ((bytes = fread(buffer, 1, sizeof(buffer), fp)) > 0)
+            //         {
+            //             send(acceptingSocket, buffer, bytes, 0);
+            //         }
+            //         pclose(fp); // Close the process
+            //     }
+            // }
 
             else if (search_file(path + 1)) // Remove leading slash for file search
             {
