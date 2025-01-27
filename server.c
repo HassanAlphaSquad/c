@@ -146,46 +146,6 @@ int main()
 
         if (strncmp(method, "GET", 3) == 0)
         {
-            // if (strcmp(path, "") == 0 || strcmp(path, "/") == 0) // Check if path is empty or root path "/"
-            // {
-            //     // Dynamically list all HTML files in the current directory, excluding default.html
-            //     DIR *dir = opendir("."); // Open the current directory
-            //     if (dir == NULL)
-            //     {
-            //         perror("Unable to open directory");
-            //         const char *errorResponse = "HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/html\r\n\r\n"
-            //                                     "<html><body><h1>500 Internal Server Error</h1><p>Could not open directory.</p></body></html>";
-            //         send(acceptingSocket, errorResponse, strlen(errorResponse), 0);
-            //     }
-            //     else
-            //     {
-            //         char buffer[1024];
-            //         char html_response[4096]; // Adjust buffer size as needed
-            //         strcpy(html_response, "<!DOCTYPE html><html lang='en'><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'><title>Homepage</title><style>h1{text-align:center; padding-top:30px;} .main{border:2px solid black; width:70%; margin:auto; margin-top:5%; padding:10px;} .links{font-style:italic;}</style></head><body><h1>Welcome to Homepage</h1><div class='main'><p class='heading'>Index</p><ol class='links'>");
-
-            //         struct dirent *entry;
-            //         while ((entry = readdir(dir)) != NULL)
-            //         {
-            //             // Filter for only .html files and exclude default.html
-            //             if (strstr(entry->d_name, ".html") != NULL && strcmp(entry->d_name, "default.html") != 0)
-            //             {
-            //                 snprintf(buffer, sizeof(buffer), "<li><a href='%s' target='_blank'>%s</a></li>", entry->d_name, entry->d_name); // Ensure links point to correct location
-
-            //                 strcat(html_response, buffer);
-            //             }
-            //         }
-
-            //         strcat(html_response, "</ol></div></body></html>");
-            //         closedir(dir); // Close the directory
-
-            //         // Send the response header
-            //         const char *header = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n";
-            //         send(acceptingSocket, header, strlen(header), 0);
-            //         // Send the dynamically generated HTML content
-            //         send(acceptingSocket, html_response, strlen(html_response), 0);
-            //     }
-            // }
-
             if (strcmp(path, "") == 0 || strcmp(path, "/") == 0) // Check if path is empty or root path "/"
             {
                 // Open the directory to list HTML files
@@ -226,14 +186,14 @@ int main()
                             // Generate the links dynamically based on the file types
                             char links_section[1024] = "<ul class='links'>";
 
-                            struct dirent *entry;
+                            struct dirent *entry; // this structure is used for directory listing/exploring
                             while ((entry = readdir(dir)) != NULL)
                             {
                                 // Loop through all the supported extensions
                                 for (size_t i = 0; i < num_extensions; ++i)
                                 {
                                     // Check if the file matches the current extension and exclude default.html
-                                    if (strstr(entry->d_name, extensions[i]) != NULL && strcmp(entry->d_name, "default.html") != 0)
+                                    if (strstr(entry->d_name, extensions[i]) != NULL && strcmp(entry->d_name, "default.html") != 0) // strcmp-compares two strings
                                     {
                                         snprintf(links_section + strlen(links_section), sizeof(links_section) - strlen(links_section),
                                                  "<li><a href='%s' target='_blank'>%s</a></li>", entry->d_name, entry->d_name);
@@ -246,8 +206,8 @@ int main()
 
                             // Replace the placeholder with the dynamically generated links
                             char buffer[4096];
-                            snprintf(buffer, sizeof(buffer), "%.*s%s%s", (int)(placeholder - html_response), html_response, links_section, placeholder + strlen("<!-- LINKS_PLACEHOLDER -->"));
-                            strcpy(html_response, buffer);
+                            snprintf(buffer, sizeof(buffer), "%.*s%s%s", (int)(placeholder - html_response), html_response, links_section, placeholder + strlen("<!-- LINKS_PLACEHOLDER -->")); // snprintf is used to combine multiple parts of data to form a string
+                            strcpy(html_response, buffer);                                                                                                                                      // strcpy-copies data from 2nd parameter to 1st
                         }
 
                         closedir(dir); // Close the directory
