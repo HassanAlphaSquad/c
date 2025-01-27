@@ -9,7 +9,7 @@
 #include <sys/stat.h>
 
 #define MAX_MESSAGE_LENGTH 1024
-#define PORT 8000
+#define PORT 8080
 
 int search_file(const char *filename)
 {
@@ -52,29 +52,28 @@ typedef enum
     COUNT
 } Extension;
 
-// array of pointers
 const char *RESPONSE_HEADERS[COUNT] = {
-
     "HTTP/1.1 415 Unsupported Media Type\r\n\r\n",
     "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n",
     "HTTP/1.1 200 OK\r\nContent-Type: text/css\r\n\r\n",
-    "HTTP/1.1 200 OK\r\nContent-Type: application/javascript\r\n\r\n",
+    "HTTP/1.1 200 OK\r\nContent-Type: application/x-javascript\r\n\r\n",
     "HTTP/1.1 200 OK\r\nContent-Type: image/png\r\n\r\n",
 };
 
-// array of pointers
-const char *EXTENSIONS[COUNT] = {
+const char *EXTENTSIONS[COUNT] = {
     "unknown",
     ".html",
     ".css",
     ".js",
     ".png"};
-
+ 
 Extension get_extension(const char *src)
 {
-    for (Extension e = 1; e < COUNT; e++) // Start from 1 to skip "unknown"
+    Extension e = 1;
+    printf("SOURCE -> %s", src);
+    while (e != COUNT)
     {
-        if (strcmp(src, EXTENSIONS[e]) == 0)
+        if (strcmp(src, EXTENTSIONS[e]) == 0)
         {
             return e;
         }
@@ -96,13 +95,6 @@ int main()
     if (sock < 0)
     {
         perror("Error opening socket");
-        exit(1);
-    }
-
-    int opt = 1;
-    if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
-    {
-        perror("Error setting socket options");
         exit(1);
     }
 
@@ -131,58 +123,79 @@ int main()
             continue;
         }
 
-        n = recv(acceptingSocket, message, MAX_MESSAGE_LENGTH, 0);
-        if (n < 0)
-        {
-            perror("Error receiving data");
-            close(acceptingSocket);
-            continue;
-        }
+        // pid_t pid = fork();
+        // if (pid < 0)
+        // {
+        //     perror("Error forking");
+        //     close(acceptingSocket);
+        //     continue;
+        // }
 
-        char method[10], path[80], protocol[10], version[10];
-        sscanf(message, "%s /%s %[^/]/%s", method, path, protocol, version);
-        printf("\n");
+        if (1)
+        { // Child process
+            // close(sock); // Child doesn't need the listening socket
 
-        if (strncmp(method, "GET", 3) == 0)
-        {
-            if (search_file(path))
+            n = recv(acceptingSocket, message, MAX_MESSAGE_LENGTH, 0);
+            if (n < 0)
             {
-                FILE *file = fopen(path, "rb");
-                if (file == NULL)
+                perror("Error receiving data");
+                close(acceptingSocket);
+                exit(1);
+            }
+
+            char method[10], path[80], protocol[10], version[10];
+            sscanf(message, "%s /%s %[^/]/%s", method, path, protocol, version);
+            printf("\n");
+
+            if (strncmp(method, "GET", 3) == 0)
+            {
+                if (search_file(path))
                 {
-                    perror("Error opening file");
+                    FILE *file = fopen(path, "rb");
+                    if (file == NULL)
+                    {
+                        perror("Error opening file");
+                    }
+                    else
+                    {
+                        const char *header;
+                        const char *extension = strrchr(path, '.');
+                        if (extension != NULL)
+                        {
+
+                            header = RESPONSE_HEADERS[get_extension(extension)];
+                            send(acceptingSocket, header, strlen(header), 0);
+
+                            char buffer[1024];
+                            size_t bytes;
+                            while ((bytes = fread(buffer, 1, sizeof(buffer), file)) > 0)
+                            {
+                                send(acceptingSocket, buffer, bytes, 0);
+                            }
+                        }
+                        fclose(file);
+                    }
                 }
                 else
                 {
-                    const char *header;
-                    const char *extension = strrchr(path, '.');
-                    if (extension != NULL)
-                    {
-                        header = RESPONSE_HEADERS[get_extension(extension)];
-                        send(acceptingSocket, header, strlen(header), 0);
-
-                        char buffer[1024];
-                        size_t bytes;
-                        while ((bytes = fread(buffer, 1, sizeof(buffer), file)) > 0)
-                        {
-                            send(acceptingSocket, buffer, bytes, 0);
-                        }
-                    }
-                    fclose(file);
+                    const char *errorResponse = "HTTP/1.1 404 Not Found\r\nContent-Type: text/html\r\n\r\n"
+                                                "<html><body><h1>404 Not Found</h1><p>The requested file was not found.</p></body></html>";
+                    send(acceptingSocket, errorResponse, strlen(errorResponse), 0);
                 }
             }
-            else
-            {
-                const char *errorResponse = "HTTP/1.1 404 Not Found\r\nContent-Type: text/html\r\n\r\n"
-                                            "<html><body><title>Page not found</title><h1>404 Not Found</h1><p>The requested file was not found.</p></body></html>";
-                send(acceptingSocket, errorResponse, strlen(errorResponse), 0);
-            }
-        }
 
-        printf("Processed request: %s\n", message);
-        close(acceptingSocket);
+            message[n] = '\0'; // Null terminate the message
+            send(acceptingSocket, message, n, 0);
+
+            printf("Received and sent back: %s\n", message);
+            close(acceptingSocket);
+            exit(0); // Exit the child process after handling the client
+        }
+        else
+        {                           // Parent process
+            close(acceptingSocket); // Parent doesn't need the accepted socket
+        }
     }
 
-    close(sock);
-    return 0;
+    close(sock); // Close the listening socket (never reached in this case)
 }
