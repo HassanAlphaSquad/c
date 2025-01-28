@@ -1,0 +1,26 @@
+body {
+    background-color: rgb(215, 211, 240);
+}
+
+h1 {
+    text-align: center;
+    color: rgb(67, 90, 133);
+    font-size: 45pt;
+    margin-bottom: -50px;
+}
+
+p {
+    color: rgba(22, 94, 79, 0.592);
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-size: 14pt;
+    font-weight: bold;
+    text-align: center;
+    padding-left: 10%;
+    padding-right: 10%;
+    padding-top: 5%;
+}
+
+img {
+    border-radius: 30%;
+    margin-bottom: -50px;
+}
