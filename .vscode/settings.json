@@ -5,6 +5,9 @@
         "types.h": "c",
         "in.h": "c",
         "socket.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "array": "c",
+        "string": "c",
+        "string_view": "c"
     }
 }
