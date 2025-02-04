@@ -4,51 +4,76 @@
 
 typedef struct _node
 {
-    int data;
+    int value;
     struct _node *next;
 } Node;
 
-void print_nodes(Node *head)
+typedef struct
 {
-    if (head != NULL)
+    Node *head;
+    Node *tail;
+    int length;
+} LinkedList;
+
+LinkedList *create_list()
+{
+    LinkedList *list = (LinkedList *)malloc(sizeof(LinkedList));
+    if (!list)
     {
-        printf("[");
-        while (head != NULL)
-        {
-            printf("%d ", head->data);
-            head = head->next;
-        }
-        printf("]");
+        printf("Memory allocation failed!\n");
+        return NULL;
     }
-    else
-    {
-        printf("List is empty. Nothing to print!");
-    }
-    printf("\n");
+    list->head = NULL;
+    list->tail = NULL;
+    list->length = 0;
+    return list;
 }
 
-void push_head(Node **head, int data) // double * because we want to utilize the *head (pointer) from main
+void print_list(LinkedList *list)
+{
+    if (list == NULL || list->head == NULL)
+    {
+        printf("List is empty. Nothing to print!\n");
+        return;
+    }
+
+    Node *head = list->head;
+    printf("[ ");
+    while (head != NULL)
+    {
+        printf("%d ", head->value);
+        head = head->next;
+    }
+    printf("]\n");
+}
+
+void push_head(LinkedList *list, int value)
 {
     Node *new_node = malloc(sizeof(Node));
-    new_node->data = data;
-    new_node->next = *head; // new_node's next will be HEAD, because it has the address to current node1
-    *head = new_node;
+    if (!new_node)
+    {
+        return;
+    }
+    new_node->value = value;
+    new_node->next = list->head; // new_node's next will be HEAD, because it has the address to current node1
+    list->head = new_node;
+    list->length++;
     return;
 }
 
-void push_tail(Node **head, int data)
+void push_tail(LinkedList *list, int value)
 {
     Node *new_node = malloc(sizeof(Node));
-    new_node->data = data;
+    new_node->value = value;
 
-    if (*head == NULL)
+    if ((list->head) == NULL)
     {
-        *head = new_node;
+        (list->head) = new_node;
         return;
     }
     else
     {
-        Node *lastNode = *head; // i will take head as lastNode and put a loop to check unless the nextNode is null
+        Node *lastNode = (list->head); // i will take head as lastNode and put a loop to check unless the nextNode is null
         while (lastNode->next != NULL)
         {
             lastNode = lastNode->next;
@@ -57,26 +82,28 @@ void push_tail(Node **head, int data)
     }
 }
 
-void delete_by_value(Node **head, int key)
+void delete_value(LinkedList *list, int key)
 {
-    Node *node_to_delete;
-    if ((*head)->data == key)
+    Node *delete_node;
+    if ((list->head)->value == key)
     {
-        node_to_delete = *head; // we will store head in another variable and finally del that variable from mem
-        *head = (*head)->next;
-        free(node_to_delete);
+        delete_node = list->head; // we will store head in another variable and finally del that variable from mem
+        list->head = (list->head)->next;
+        free(delete_node);
+        list->length--;
         return;
     }
     else
     {
-        Node *current_node = *head;
+        Node *current_node = list->head;
         while (current_node->next != NULL)
         {
-            if (current_node->next->data == key)
+            if (current_node->next->value == key)
             {
-                node_to_delete = current_node->next;
+                delete_node = current_node->next;
                 current_node->next = current_node->next->next;
-                free(node_to_delete);
+                free(delete_node);
+                list->length--;
                 return;
             }
             else
@@ -84,25 +111,26 @@ void delete_by_value(Node **head, int key)
                 current_node = current_node->next; // if condition not matched, then keep moving current pointer forward (increment)
             }
             printf("Nothing to delete. Node not found\n");
+            return;
         }
     }
 }
 
-void delete_by_index(Node **head, int index)
+void delete_index(LinkedList *list, int index)
 {
-    if (*head == NULL || index < 0)
+    if ((list->head) == NULL || index < 0)
     {
-        printf("delete_by_index() failure.\n");
+        printf("delete_index() failure.\n");
         return;
     }
 
-    Node *p = *head;
-    Node *q = (*head)->next;
+    Node *p = (list->head);
+    Node *q = ((list->head))->next;
     for (int i = 0; i < index - 1; i++)
     {
         if (q->next == NULL)
         {
-            printf("delete_by_index() failure: The index is not accessible.\n");
+            printf("delete_index() failure: The index is not accessible.\n");
             return;
         }
         else
@@ -113,16 +141,18 @@ void delete_by_index(Node **head, int index)
     }
     p->next = q->next;
     free(q);
+    list->length--;
 }
 
-void pop_head(Node **head)
+void pop_head(LinkedList *list)
 {
-    if (head != NULL)
+    if (list->head != NULL)
     {
-        Node *node_to_delete;
-        node_to_delete = *head; // we will store head in another variable and finally del that variable from mem
-        *head = (*head)->next;
-        free(node_to_delete);
+        Node *delete_node;
+        delete_node = list->head; // we will store head in another variable and finally del that variable from mem
+        list->head = (list->head)->next;
+        free(delete_node);
+        list->length--;
         return;
     }
     else
@@ -132,9 +162,9 @@ void pop_head(Node **head)
     }
 }
 
-void pop_tail(Node **head)
+void pop_tail(LinkedList *list)
 {
-    Node *temp = *head;
+    Node *temp = list->head;
     Node *prev;
     if (temp == NULL)
     {
@@ -143,8 +173,9 @@ void pop_tail(Node **head)
     }
     if (temp->next == NULL)
     {
-        printf("%d deleted!\n", temp->data);
+        printf("%d deleted!\n", temp->value);
         free(temp);
+        list->length--;
         return;
     }
     while (temp->next != NULL)
@@ -153,101 +184,148 @@ void pop_tail(Node **head)
         temp = temp->next;
     }
     prev->next = NULL;
-    printf("%d deleted\n", temp->data);
+    printf("%d deleted\n", temp->value);
     free(temp);
+    list->length--;
 }
 
-void search_node(Node **head, int key)
+Node *search_list(LinkedList *list, int key)
 {
-    bool nodeFound = false;
-    if ((*head)->data == key)
+    if (list == NULL)
+        return NULL;
+
+    Node *current_node = list->head;
+    while (current_node != NULL)
     {
-        nodeFound = true;
-        printf("Node: %d found in list\n", key);
-        return;
-    }
-    else
-    {
-        Node *current_node = *head;
-        while (current_node->next != NULL)
+        if (current_node->value == key)
         {
-            if (current_node->next->data == key)
-            {
-                nodeFound = true;
-                printf("Node: %d found in list\n", key);
-                return;
-            }
-            else
-            {
-                current_node->next = current_node->next->next;
-            }
+            printf("Node: %d found in list\n", key);
+            return current_node;
         }
-        printf("Node: %d not found in list\n", key);
+
+        current_node = current_node->next;
     }
+    printf("Node: %d not found in list\n", key);
+    return NULL;
 }
 
-Node *create_new_node(int data)
+void search_replace(LinkedList *list, int old, int new)
+{
+    if (list == NULL)
+        return;
+    Node *n = search_list(list, old);
+    if (n == NULL)
+        return;
+    n->value = new;
+}
+
+Node *get(LinkedList *list, int i)
+{
+    if (list == NULL)
+        return NULL;
+    if (i >= list->length)
+        return NULL;
+
+    int ci = 0;
+    Node *current_node = list->head;
+    while (current_node != NULL)
+    {
+        if (ci == i)
+        {
+            printf("Node: at %d found in list\n", i);
+            return current_node;
+        }
+        current_node = current_node->next;
+        ci++;
+    }
+    printf("Node: at %d not found in list\n", i);
+    return NULL;
+}
+
+int replace(LinkedList *list, int i, int new_value)
+{
+    if (list == NULL)
+        return NULL;
+    Node *n = get(list, i);
+    if (n == NULL)
+        return NULL;
+    int old = n->value;
+    n->value = new_value;
+    return old;
+}
+
+Node *new_node(int value)
 {
     Node *new_node = (Node *)malloc(sizeof(Node));
-    new_node->data = data;
+    if (new_node == NULL)
+        return NULL;
+    new_node->value = value;
     new_node->next = NULL;
     return new_node;
 }
 
-int get_list_length(Node *head)
+Node *insert_index(LinkedList *list, int index, int value)
 {
-    int count = 0;
-    Node *current = head;
-    while (current != NULL)
-    {
-        count++;
-        current = current->next;
-    }
-    return count;
-}
-
-Node *insert_node_at_index(Node **head, int position, int data)
-{
-    if (((*head) == NULL) && position > 0)
+    if (list == NULL)
     {
         printf("List not initialized!\n");
         return NULL;
     }
-    if (position < 0)
+
+    int original_index = index;
+    if (index < 0)
     {
-        printf("Index must be greater than or equal to 0\n");
-        return NULL;
+        index = 0;
+        printf("Index %d is out of bounds, clamping to %d (head).\n", original_index, index);
+    }
+    if (index > list->length)
+    {
+        index = list->length;
+        printf("Index %d is out of bounds, clamping to %d (tail).\n", original_index, index);
     }
 
-    Node *new_node = create_new_node(data);
-    if (!new_node)
+    //! In case of termination
+    // if (index < 0 || index > list->length)
+    // {
+    //     printf("Invalid index!\n");
+    //     return NULL;
+    // }
+
+    Node *node = new_node(value);
+    if (!node)
         return NULL; // Memory allocation failed
 
-    if (position == 0)
+    if (index == 0)
     {
-        new_node->next = *head;
-        *head = new_node;
-        // printf("Node: %d added at position: %d\n", data, position);
-        return new_node;
+        node->next = list->head;
+        list->head = node;
+        if (list->tail == NULL) // If inserting first node
+            list->tail = node;
+    }
+    else
+    {
+        Node *current = list->head;
+        for (int i = 0; i < index - 1 && current != NULL; i++)
+        {
+            current = current->next;
+        }
+
+        if (current == NULL)
+        {
+            printf("Invalid index!\n");
+            free(node);
+            return NULL;
+        }
+
+        node->next = current->next;
+        current->next = node;
+
+        if (node->next == NULL) // If inserted at the last position
+            list->tail = node;
     }
 
-    Node *current = *head;
-    for (int i = 0; i < position - 1 && current != NULL; i++)
-    {
-        current = current->next;
-    }
-
-    if (current == NULL)
-    {
-        printf("Invalid index!\n");
-        free(new_node); // Prevent memory leak
-        return NULL;
-    }
-
-    new_node->next = current->next;
-    current->next = new_node;
-    // printf("Node: %d added at position: %d\n", data, position);
-    return new_node;
+    list->length++; // Update length dynamically
+    return node;
 }
 
 void swap(int *val1, int *val2)
@@ -257,10 +335,19 @@ void swap(int *val1, int *val2)
     *val2 = temp;
 }
 
-Node *bubbleSort(Node **head)
+int list_length(LinkedList *list)
 {
-    if (*head == NULL)
-        return *head; // No sorting needed for empty or single-node list
+    if (list == NULL)
+        return 0;
+    return list->length;
+}
+
+typedef bool (*SortPredicate)(int a, int b);
+
+Node *bubble_sort(LinkedList *list, SortPredicate predicate)
+{
+    if (list->head == NULL)
+        return list->head; // No sorting needed for empty or single-node list
 
     int swapped;
     Node *ptr;
@@ -269,13 +356,13 @@ Node *bubbleSort(Node **head)
     do
     {
         swapped = 0;
-        ptr = *head;
+        ptr = list->head;
 
         while (ptr->next != last_sorted)
         {
-            if (ptr->data > ptr->next->data)
+            if (predicate(ptr->value, ptr->next->value))
             {
-                swap(&(ptr->data), &(ptr->next->data));
+                swap(&(ptr->value), &(ptr->next->value));
                 swapped = 1;
             }
             ptr = ptr->next;
@@ -283,23 +370,34 @@ Node *bubbleSort(Node **head)
         last_sorted = ptr; // Reduce the range of checking in each pass
     } while (swapped);
 
-    return *head;
+    return list->head;
+}
+
+bool sort_assending(int a, int b)
+{
+    return a > b;
+}
+
+bool sort_dessending(int a, int b)
+{
+    return a < b;
 }
 
 int main()
 {
-    Node *head = NULL;
-    insert_node_at_index(&head, 0, 50);
-    insert_node_at_index(&head, 1, 10);
-    insert_node_at_index(&head, 2, 40);
-    insert_node_at_index(&head, 3, 90);
-    insert_node_at_index(&head, 4, 85);
-    printf("Linked List (Original): ");
-    print_nodes(head);
 
-    bubbleSort(&head);
-    printf("Linked List (Sorted): ");
-    print_nodes(head);
-
-       printf("\n");
+    LinkedList *list = create_list();
+    push_tail(list, 32);
+    push_tail(list, 3542);
+    push_head(list, 10);
+    push_tail(list, 32);
+    push_tail(list, 3);
+    push_tail(list, 6);
+    push_tail(list, 1);
+    push_tail(list, -1);
+    bubble_sort(list, sort_dessending);
+    print_list(list);
+    printf("\n");
+    get(list, 32);
+    printf("\n");
 }
