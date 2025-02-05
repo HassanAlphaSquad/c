@@ -168,22 +168,174 @@ Node *insert_index(LinkedList *list, int index, int value)
     return node;
 }
 
-Node *get(LinkedList *list, int i)
+void head_pop(LinkedList *list)
 {
-    if (list == NULL || i < 0 || i >= list->length)
+    if (list == NULL || list->head == NULL)
     {
-        return NULL; // Invalid index
+        return;
     }
 
-    Node *current_node = list->head;
-    for (int ci = 0; ci < i; ci++)
+    Node *temp = list->head;
+    list->head = list->head->next;
+
+    if (list->head != NULL)
     {
+        list->head->prev = NULL;
+    }
+    else
+    {
+        list->tail = NULL; // If the list is empty after deletion
+    }
+
+    free(temp);
+    list->length--;
+}
+
+void tail_pop(LinkedList *list)
+{
+    if (list == NULL || list->tail == NULL)
+    {
+        return;
+    }
+
+    Node *temp = list->tail;
+    list->tail = list->tail->prev;
+
+    if (list->tail != NULL)
+    {
+        list->tail->next = NULL;
+    }
+    else
+    {
+        list->head = NULL; // If the list is empty after deletion
+    }
+
+    free(temp);
+    list->length--;
+}
+
+void delete_value(LinkedList *list, int value)
+{
+    if (list == NULL || list->head == NULL)
+    {
+        return;
+    }
+
+    Node *current = list->head;
+    while (current != NULL && current->value != value) // Change 'data' to 'value'
+    {
+        current = current->next;
+    }
+
+    if (current == NULL) // Value not found
+    {
+        return;
+    }
+
+    if (current->prev != NULL)
+    {
+        current->prev->next = current->next;
+    }
+    else
+    {
+        list->head = current->next;
+    }
+
+    if (current->next != NULL)
+    {
+        current->next->prev = current->prev;
+    }
+    else
+    {
+        list->tail = current->prev;
+    }
+
+    free(current);
+    list->length--;
+}
+
+void delete_index(LinkedList *list, int index)
+{
+    if (list == NULL || list->head == NULL || index < 0 || index >= list->length)
+    {
+        return;
+    }
+
+    Node *current = list->head;
+    for (int i = 0; i < index; i++)
+    {
+        current = current->next;
+    }
+
+    if (current->prev != NULL)
+    {
+        current->prev->next = current->next;
+    }
+    else
+    {
+        list->head = current->next;
+    }
+
+    if (current->next != NULL)
+    {
+        current->next->prev = current->prev;
+    }
+    else
+    {
+        list->tail = current->prev;
+    }
+
+    free(current);
+    list->length--;
+}
+
+void delete(LinkedList *list)
+{
+    if (list == NULL || list->head == NULL)
+    {
+        return;
+    }
+
+    Node *current = list->head;
+    Node *nextNode = NULL;
+
+    while (current != NULL)
+    {
+        free(current);
+        current = current->next;
+    }
+
+    list->head = NULL;
+    list->tail = NULL;
+    list->length = 0;
+}
+
+Node* get_index(LinkedList *list, int i) {
+    if (list == NULL || list->head == NULL) {
+        printf("List is empty or invalid.\n");
+        return NULL;
+    }
+
+    if (i < 0 || i >= list->length) {
+        printf("Index %d out of bounds, list length is %d.\n", i, list->length);
+        return NULL;
+    }
+
+    Node* current_node = list->head;
+    int current_index = 0;
+
+    while (current_node != NULL) {
+        printf("At index %d, Node value: %d\n", current_index, current_node->value);
+        if (current_index == i) {
+            printf("Node at index %d found with value: %d\n", i, current_node->value);
+            return current_node;
+        }
         current_node = current_node->next;
+        current_index++;
     }
 
-    // Print the result in the format: index => value
-    printf("Node at index %d => %d\n", i, current_node->value);
-    return current_node;
+    printf("Node at index %d not found in the list\n", i);
+    return NULL;
 }
 
 void print_list(LinkedList *list)
@@ -229,6 +381,38 @@ void print_reverse(LinkedList *list)
     printf("]\n");
 }
 
+Node* search(LinkedList *list, int value) {
+    if (list == NULL) {
+        return NULL;
+    }
+    Node* current = list->head;
+    while (current != NULL) {
+        if (current->value == value) {
+            // printf("Node %d found", current->value);
+            return current;
+        }
+        current = current->next;
+    }
+    return NULL;
+}
+
+void search_replace(LinkedList *list, int old, int new) {
+    if (list == NULL) {
+        return;
+    }
+    Node* n = search(list, old);
+    if (n == NULL) {
+        return;
+    }
+    n->value = new;
+
+}
+
+int length(LinkedList *list) {
+    if (list == NULL || list->length ==0) return -1;
+    return list->length;
+}
+
 int main()
 {
     LinkedList *list = create_list();
@@ -255,6 +439,22 @@ int main()
     insert_index(list, 5, 50);
     insert_index(list, 6, 60);
     // print_list(list);
-    get(list, 2);
+    // get(list, 2);
+    print_list(list);
+    // head_pop(list);
+    // head_pop(list);
+    // tail_pop(list);
+    // print_list(list);
+    // printf("Length: %d\n", list->length);
+    // search(list, 20);
+    // search_replace(list, 20,21);
+    // print_list(list);
+    // // get(list, 10);
+    // get_index(list, 0);
+    // get(list, 20);
+    // printf("Length: %d\n", length(list));
+    // delete(list);
+    // print_list(list);
+    // printf("Length: %d\n", list->length);
     return 0;
 }
