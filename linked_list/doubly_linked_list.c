@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <stdbool.h>
 
 typedef struct node_t
@@ -18,7 +18,7 @@ typedef struct
 
 LinkedList *create_list()
 {
-    LinkedList *list = (LinkedList *)malloc(sizeof(LinkedList));
+    LinkedList *list = malloc(sizeof(LinkedList));
     if (!list)
     {
         printf("Memory allocation failed!\n");
@@ -297,12 +297,13 @@ void delete(LinkedList *list)
     }
 
     Node *current = list->head;
-    Node *nextNode = NULL;
+    Node *next = NULL;
 
     while (current != NULL)
     {
+        next = current->next;
         free(current);
-        current = current->next;
+        current = next;
     }
 
     list->head = NULL;
@@ -310,30 +311,30 @@ void delete(LinkedList *list)
     list->length = 0;
 }
 
-Node* get_index(LinkedList *list, int i) {
-    if (list == NULL || list->head == NULL) {
-        printf("List is empty or invalid.\n");
+Node *get(LinkedList *list, int i)
+{
+    if (list == NULL)
         return NULL;
-    }
 
-    if (i < 0 || i >= list->length) {
-        printf("Index %d out of bounds, list length is %d.\n", i, list->length);
-        return NULL;
-    }
+    if (i >= list->length || i < 0)
+        return NULL;  // Ensure i is within the valid range
 
-    Node* current_node = list->head;
-    int current_index = 0;
+    int ci = 0;
+    Node *current_node = list->head;
 
-    while (current_node != NULL) {
-        printf("At index %d, Node value: %d\n", current_index, current_node->value);
-        if (current_index == i) {
-            printf("Node at index %d found with value: %d\n", i, current_node->value);
+    // Traverse from the head to the i-th node
+    while (current_node != NULL)
+    {
+        if (ci == i)
+        {
+            // printf("Node at index %d found in the list: %d\n", i, current_node->value);
             return current_node;
         }
         current_node = current_node->next;
-        current_index++;
+        ci++;
     }
 
+    // If no node is found (shouldn't really happen with the bounds check above)
     printf("Node at index %d not found in the list\n", i);
     return NULL;
 }
@@ -409,8 +410,26 @@ void search_replace(LinkedList *list, int old, int new) {
 }
 
 int length(LinkedList *list) {
-    if (list == NULL || list->length ==0) return -1;
+    if (list == NULL) return -1;
     return list->length;
+}
+
+void swap(int *val1, int *val2)
+{
+    int temp = *val1;
+    *val1 = *val2;
+    *val2 = temp;
+}
+
+int replace(LinkedList* list, int i, int new_value) {
+    if (list == NULL)
+        return -1;
+    Node* n = get(list, i);
+    if (n == NULL)
+        return -1;
+    int old = n->value;
+    n->value = new_value;
+    return old;
 }
 
 int main()
@@ -438,8 +457,11 @@ int main()
     insert_index(list, 4, 40);
     insert_index(list, 5, 50);
     insert_index(list, 6, 60);
+    insert_index(list, 17, 70);
     // print_list(list);
     // get(list, 2);
+    print_list(list);
+    replace(list, 1, 101);
     print_list(list);
     // head_pop(list);
     // head_pop(list);
@@ -456,5 +478,7 @@ int main()
     // delete(list);
     // print_list(list);
     // printf("Length: %d\n", list->length);
+    // get(list, 6);
+    // get(list, 7);
     return 0;
 }
