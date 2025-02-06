@@ -44,7 +44,7 @@ Node *create_node(int value)
     return node;
 }
 
-void head_push(LinkedList *list, int value)
+void push_head(LinkedList *list, int value)
 {
     if (list == NULL)
     {
@@ -69,10 +69,11 @@ void head_push(LinkedList *list, int value)
     list->length++;
 }
 
-void tail_push(LinkedList *list, int value)
+void push_tail(LinkedList *list, int value)
 {
     if (list == NULL)
     {
+        printf("Error: List not initialized!");
         return;
     }
 
@@ -106,69 +107,54 @@ Node *insert_index(LinkedList *list, int index, int value)
         return NULL;
     }
 
-    int original_index = index;
-    if (index < 0)
+    // Handle out-of-bounds index cases
+    if (index <= 0)
     {
-        index = 0;
-        printf("Index %d is out of bounds, clamping to %d (head).\n", original_index, index);
+        push_head(list, value);
+        return list->head;
     }
-    if (index > list->length)
+
+    if (index >= list->length)
     {
-        index = list->length;
-        printf("Index %d is out of bounds, clamping to %d (tail).\n", original_index, index);
+        push_tail(list, value);
+        return list->tail;
     }
 
     Node *node = create_node(value);
     if (!node)
-        return NULL; // Memory allocation failed
+        return NULL;
 
-    if (index == 0)
-    { // Insert at head
-        node->next = list->head;
-        if (list->head != NULL)
-        {
-            list->head->prev = node;
-        }
-        list->head = node;
-        if (list->tail == NULL)
-        {
-            list->tail = node; // First node becomes both head and tail
-        }
-    }
-    else
+    Node *current = list->head;
+    for (int i = 0; i < index - 1 && current != NULL; i++)
     {
-        Node *current = list->head;
-        for (int i = 0; i < index - 1 && current != NULL; i++)
-        {
-            current = current->next;
-        }
+        current = current->next;
+    }
 
-        if (current == NULL)
-        {
-            printf("Invalid index!\n");
-            free(node);
-            return NULL;
-        }
+    if (current == NULL)
+    {
+        printf("Invalid index!\n");
+        free(node);
+        return NULL;
+    }
 
-        node->next = current->next;
-        node->prev = current;
-        if (current->next != NULL)
-        {
-            current->next->prev = node;
-        }
-        current->next = node;
+    node->next = current->next;
+    node->prev = current;
+    if (current->next != NULL)
+    {
+        current->next->prev = node;
+    }
+    current->next = node;
 
-        if (node->next == NULL)
-        {
-            list->tail = node; // Update tail if inserted at the end
-        }
+    if (node->next == NULL)
+    {
+        list->tail = node; // Update tail if inserted at the end
     }
 
     list->length++; // Update length dynamically
     return node;
 }
 
-void head_pop(LinkedList *list)
+void pop_head(LinkedList *list)
 {
     if (list == NULL || list->head == NULL)
     {
@@ -191,7 +177,7 @@ void head_pop(LinkedList *list)
     list->length--;
 }
 
-void tail_pop(LinkedList *list)
+void pop_tail(LinkedList *list)
 {
     if (list == NULL || list->tail == NULL)
     {
@@ -289,19 +275,15 @@ void delete_index(LinkedList *list, int index)
     list->length--;
 }
 
-void delete(LinkedList *list)
+void clear(LinkedList *list)
 {
-    if (list == NULL || list->head == NULL)
-    {
+    if (list == NULL)
         return;
-    }
 
     Node *current = list->head;
-    Node *next = NULL;
-
     while (current != NULL)
     {
-        next = current->next;
+        Node *next = current->next;
         free(current);
         current = next;
     }
@@ -311,18 +293,32 @@ void delete(LinkedList *list)
     list->length = 0;
 }
 
+// void destroy(LinkedList **list)
+// {
+//     if (list == NULL || *list == NULL)
+//     {
+//         printf("List not found in memory\n");
+//         return;
+//     }
+
+//     free(*list);
+//     *list = NULL;
+
+//     printf("List successfully destroyed\n");
+// }
+
 Node *get(LinkedList *list, int i)
 {
     if (list == NULL)
         return NULL;
 
     if (i >= list->length || i < 0)
-        return NULL;  // Ensure i is within the valid range
+        return NULL; // if i is not within range
 
     int ci = 0;
     Node *current_node = list->head;
 
-    // Traverse from the head to the i-th node
+    // Traverse from the head i node
     while (current_node != NULL)
     {
         if (ci == i)
@@ -334,28 +330,31 @@ Node *get(LinkedList *list, int i)
         ci++;
     }
 
-    // If no node is found (shouldn't really happen with the bounds check above)
+    // If no node is found
     printf("Node at index %d not found in the list\n", i);
     return NULL;
 }
 
 void print_list(LinkedList *list)
 {
-    if (list == NULL)
+    if (list == NULL || list->head == NULL)
     {
+        printf("[]\n");
         return;
     }
+
     Node *current = list->head;
     printf("[");
+
     while (current != NULL)
     {
         printf("%d", current->value);
         if (current->next != NULL)
-        { // for avoiding trailing comma
             printf(", ");
-        }
+
         current = current->next;
     }
+
     printf("]\n");
 }
 
@@ -382,13 +381,17 @@ void print_reverse(LinkedList *list)
     printf("]\n");
 }
 
-Node* search(LinkedList *list, int value) {
-    if (list == NULL) {
+Node *search(LinkedList *list, int value)
+{
+    if (list == NULL)
+    {
         return NULL;
     }
-    Node* current = list->head;
-    while (current != NULL) {
-        if (current->value == value) {
+    Node *current = list->head;
+    while (current != NULL)
+    {
+        if (current->value == value)
+        {
             // printf("Node %d found", current->value);
             return current;
         }
@@ -397,34 +400,32 @@ Node* search(LinkedList *list, int value) {
     return NULL;
 }
 
-void search_replace(LinkedList *list, int old, int new) {
-    if (list == NULL) {
+void search_replace(LinkedList *list, int old, int new)
+{
+    if (list == NULL)
+    {
         return;
     }
-    Node* n = search(list, old);
-    if (n == NULL) {
+    Node *n = search(list, old);
+    if (n == NULL)
+    {
         return;
     }
     n->value = new;
-
 }
 
-int length(LinkedList *list) {
-    if (list == NULL) return -1;
+int length(LinkedList *list)
+{
+    if (list == NULL)
+        return -1;
     return list->length;
 }
 
-void swap(int *val1, int *val2)
+int replace(LinkedList *list, int i, int new_value)
 {
-    int temp = *val1;
-    *val1 = *val2;
-    *val2 = temp;
-}
-
-int replace(LinkedList* list, int i, int new_value) {
     if (list == NULL)
         return -1;
-    Node* n = get(list, i);
+    Node *n = get(list, i);
     if (n == NULL)
         return -1;
     int old = n->value;
@@ -432,17 +433,65 @@ int replace(LinkedList* list, int i, int new_value) {
     return old;
 }
 
+void swap(int *a, int *b)
+{
+    int temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+bool sort_ascending(int a, int b)
+{
+    return a > b;
+}
+
+bool sort_descending(int a, int b)
+{
+    return a < b;
+}
+
+typedef bool (*SortPredicate)(int a, int b);
+
+Node *bubble_sort(LinkedList *list, SortPredicate predicate)
+{
+    if (list->head == NULL)
+        return list->head;
+
+    int swapped;
+    Node *ptr;
+    Node *last_sorted = NULL;
+
+    do
+    {
+        swapped = 0;
+        ptr = list->head;
+
+        while (ptr->next != last_sorted)
+        {
+            if (predicate(ptr->value, ptr->next->value))
+            {
+                swap(&(ptr->value), &(ptr->next->value));
+                swapped = 1;
+            }
+            ptr = ptr->next;
+        }
+        last_sorted = ptr;
+    } while (swapped);
+
+    return list->head;
+}
+
 int main()
 {
     LinkedList *list = create_list();
-    // head_push(list, 10);
-    // head_push(list, 20);
-    // head_push(list, 30);
-    // tail_push(list, 40);
-    // head_push(list, 1);
-    // tail_push(list, 100);
-    // head_push(list, 2);
-    // tail_push(list, 101);
+    // push_head(list, 10);
+    // push_head(list, 20);
+    // push_head(list, 30);
+    // push_tail(list, 40);
+    // push_head(list, 1);
+    // push_tail(list, 100);
+    // push_head(list, 2);
+    // push_tail(list, 101);
     // print_list(list);
     // print_reverse(list);
     // insert_index(list, 4, 1000);
@@ -450,22 +499,53 @@ int main()
     // insert_index(list, 15, 43465442);
     // print_list(list);
     // get(list, 3);
-    insert_index(list, 0, 0);
-    insert_index(list, 1, 10);
-    insert_index(list, 2, 20);
-    insert_index(list, 3, 30);
-    insert_index(list, 4, 40);
-    insert_index(list, 5, 50);
-    insert_index(list, 6, 60);
-    insert_index(list, 17, 70);
+    // insert_index(list, 0, 0);
+    // insert_index(list, 1, 10);
+    // insert_index(list, 2, 20);
+    // insert_index(list, 3, 30);
+    // insert_index(list, 4, 40);
+    // insert_index(list, 5, 50);
+    // insert_index(list, 6, 60);
+    // insert_index(list, 17, 70);
     // print_list(list);
     // get(list, 2);
+    // print_list(list);
+    // replace(list, 1, 101);
+    // print_list(list);
+    // clear(list);
+    // insert_index(list, 0, 10);
+    // print_list(list);
+    insert_index(list, 0, 13);
+    insert_index(list, 1, 11);
+    insert_index(list, 2, 1000);
+    insert_index(list, 3, 12);
     print_list(list);
-    replace(list, 1, 101);
+    // clear(list);
+    // print_list(list);
+    bubble_sort(list, sort_descending);
     print_list(list);
-    // head_pop(list);
-    // head_pop(list);
-    // tail_pop(list);
+    printf("Head: %d", list->head->value);
+    printf(" -> %d", list->head->next->value);
+    printf(" -> %d", list->head->next->next->value);
+    printf(" -> %d", list->head->next->next->next->value);
+    printf("\n");
+    // insert_index(list, 34, 321);
+    insert_index(list, 8, 888);
+    insert_index(list, 0, 32);
+    insert_index(list, -1, 121);
+    print_list(list);
+    // printf("\nTail: %d", list->tail->value);
+    // printf(" -> %d", list->tail->prev->value);
+    // printf(" -> %d", list->tail->prev->prev->value);
+    // printf(" -> %d", list->tail->prev->prev->prev->value);
+    // destroy(list);
+    // print_list(list);
+    // destroy(&list);
+    // print_list(list);
+
+    // pop_head(list);
+    // pop_head(list);
+    // pop_tail(list);
     // print_list(list);
     // printf("Length: %d\n", list->length);
     // search(list, 20);
@@ -480,5 +560,4 @@ int main()
     // printf("Length: %d\n", list->length);
     // get(list, 6);
     // get(list, 7);
-    return 0;
 }
