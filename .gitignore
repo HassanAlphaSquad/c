@@ -3,11 +3,3 @@ cmake-build-debug
 cmake-build-debug-mingw
 cmake-build-default-mingw
 CMakeLists.txt
-# Ignore all files without an extension
-*.
-
-# Ensure directories are not ignored
-!*/
-
-# Ensure files with extensions are not ignored
-!*.*
